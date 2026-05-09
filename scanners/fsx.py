@@ -3,7 +3,7 @@ from scanners.base import BaseScanner
 from scanners import register
 from models import Resource, CostEstimate
 
-FSX_PRICE_PER_GB_MONTH = 0.075
+FSX_PRICE_PER_GIB_MONTH = 0.075
 
 @register
 class FSxScanner(BaseScanner):
@@ -15,9 +15,8 @@ class FSxScanner(BaseScanner):
         try:
             filesystems = client.describe_file_systems().get("FileSystems", [])
             for fs in filesystems:
-                storage_gib = fs.get("StorageCapacity", 0)
-                size_gb = storage_gib * (1024**3) / (1000**3)
-                cost = CostEstimate(size_gb * FSX_PRICE_PER_GB_MONTH, "static")
+                size_gib = fs.get("StorageCapacity", 0)
+                cost = CostEstimate(size_gib * FSX_PRICE_PER_GIB_MONTH, "static")
                 resources.append(Resource(
                     name=fs["FileSystemId"],
                     resource_type="fsx.filesystem",

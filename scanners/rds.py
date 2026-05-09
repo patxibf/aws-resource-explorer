@@ -15,11 +15,11 @@ class RDSScanner(BaseScanner):
 
         for page in paginator.paginate(MaxRecords=100):
             for db in page.get("DBInstances", []):
-                resources.append(self._parse_db(db))
+                resources.append(self._parse_db(db, client))
 
         return resources
 
-    def _parse_db(self, db: dict) -> Resource:
+    def _parse_db(self, db: dict, client) -> Resource:
         name = db["DBInstanceIdentifier"]
         status = db["DBInstanceStatus"]
         instance_class = db["DBInstanceClass"]

@@ -9,8 +9,6 @@ class IAMScanner(BaseScanner):
     SERVICE_NAME = "iam"
 
     def scan(self) -> List[Resource]:
-        if self.region != self.regions[0]:
-            return []
         client = self.session.client(self.SERVICE_NAME)
         resources = []
 

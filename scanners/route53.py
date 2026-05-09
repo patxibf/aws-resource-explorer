@@ -9,8 +9,6 @@ class Route53Scanner(BaseScanner):
     SERVICE_NAME = "route53"
 
     def scan(self) -> List[Resource]:
-        if self.region != self.regions[0]:
-            return []
         client = self.session.client(self.SERVICE_NAME)
         resources = []
         try:

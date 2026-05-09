@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from typing import List
 import sys
 from functools import lru_cache
@@ -6,7 +7,9 @@ from scanners.base import BaseScanner
 from scanners import register
 from models import Resource, CostEstimate
 
-@lru_cache(maxsize=1)
+S3_STORAGE_PRICE_PER_GB = 0.023
+
+@lru_cache(maxsize=None)
 def get_s3_storage_price(region: str = "us-east-1") -> float:
     try:
         pricing = boto3.client("pricing", region_name="us-east-1")
@@ -18,27 +21,30 @@ def get_s3_storage_price(region: str = "us-east-1") -> float:
         for price in response.get("PriceList", []):
             usd = list(list(price["terms"]["onDemand"].values())[0]["priceDimensions"].values())[0]["pricePerUnit"]["USD"]
             return float(usd)
-        return 0.023
+        return S3_STORAGE_PRICE_PER_GB
     except Exception:
-        return 0.023
+        return S3_STORAGE_PRICE_PER_GB
 
-def get_bucket_size_bytes(client, bucket: str) -> int:
+def get_bucket_size_gb(session, bucket: str, bucket_region: str) -> float:
     try:
-        cw = boto3.client("cloudwatch", region_name="us-east-1")
+        cw = session.client("cloudwatch", region_name=bucket_region)
+        end = datetime.utcnow()
+        start = end - timedelta(days=2)
         result = cw.get_metric_statistics(
             Namespace="AWS/S3",
             MetricName="BucketSizeBytes",
             Period=86400,
-            StartTime="2026-05-01T00:00:00Z",
-            EndTime="2026-05-09T00:00:00Z",
+            StartTime=start,
+            EndTime=end,
             Statistics=["Average"],
             Dimensions=[{"Name": "BucketName", "Value": bucket}, {"Name": "StorageType", "Value": "StandardStorage"}]
         )
         if result.get("Datapoints"):
-            return int(result["Datapoints"][0]["Average"])
+            bytes_per_gb = 1000**3
+            return result["Datapoints"][0]["Average"] / bytes_per_gb
     except Exception:
         pass
-    return 0
+    return 0.0
 
 @register
 class S3Scanner(BaseScanner):
@@ -60,8 +66,16 @@ class S3Scanner(BaseScanner):
                 except Exception as e:
                     print(f"[s3] no tagset or error for bucket {name}: {type(e).__name__}", file=sys.stderr)
 
-                size_bytes = get_bucket_size_bytes(client, name)
-                size_gb = size_bytes / (1024**3)
+                bucket_region = self.region
+                try:
+                    location = client.get_bucket_location(Bucket=name)
+                    region_override = location.get("LocationConstraint")
+                    if region_override:
+                        bucket_region = region_override
+                except Exception:
+                    pass
+
+                size_gb = get_bucket_size_gb(self.session, name, bucket_region)
                 cost = CostEstimate(size_gb * price_per_gb, "static")
                 resources.append(Resource(name=name, resource_type="s3.bucket", region=self.region, status="active", cost=cost, tags=tags))
         except Exception as e:
