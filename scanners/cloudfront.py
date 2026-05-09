@@ -5,11 +5,8 @@ from models import Resource, CostEstimate
 
 @register
 class CloudFrontScanner(BaseScanner):
+    IS_GLOBAL = True
     SERVICE_NAME = "cloudfront"
-
-    def __init__(self, session, region: str, regions: List[str]):
-        super().__init__(session, region)
-        self.regions = regions
 
     def scan(self) -> List[Resource]:
         if self.region != self.regions[0]:

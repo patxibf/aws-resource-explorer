@@ -32,6 +32,6 @@ class ELBScanner(BaseScanner):
             arn = lb["LoadBalancerArn"]
             tags_response = client.describe_tags(ResourceArns=[arn])
             tags = {t["Key"]: t["Value"] for t in tags_response.get("TagDescriptions", [{}])[0].get("Tags", [])}
-        except Exception:
+        except Exception as e:
             print(f"[elbv2] failed to get tags for {name}: {type(e).__name__}", file=sys.stderr)
         return Resource(name=name, resource_type=f"elb.{lb_type}", region=self.region, status=state, cost=cost, tags=tags)

@@ -16,7 +16,7 @@ class EFSScanner(BaseScanner):
             filesystems = client.describe_file_systems().get("FileSystems", [])
             for fs in filesystems:
                 size_bytes = fs.get("SizeInBytes", {}).get("Value", 0)
-                size_gb = size_bytes / (1024**3)
+                size_gb = size_bytes / (1000**3)
                 cost = CostEstimate(size_gb * EFS_PRICE_PER_GB_MONTH, "static")
                 resources.append(Resource(
                     name=fs["FileSystemId"],

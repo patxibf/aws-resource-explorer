@@ -14,10 +14,10 @@ class APIGatewayScanner(BaseScanner):
             rest_apis = client.get_rest_apis().get("items", [])
             for api in rest_apis:
                 endpoint_config = api.get("endpointConfiguration", {})
-                    types = endpoint_config.get("types", [])
-                    endpoint_type = types[0] if types else None
-                    status = "ACTIVE" if endpoint_type != "PRIVATE" else "PRIVATE"
-                    resources.append(Resource(
+                types = endpoint_config.get("types", [])
+                endpoint_type = types[0] if types else None
+                status = "ACTIVE" if endpoint_type != "PRIVATE" else "PRIVATE"
+                resources.append(Resource(
                     name=api["name"],
                     resource_type="apigateway.rest",
                     region=self.region,

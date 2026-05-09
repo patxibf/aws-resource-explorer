@@ -4,7 +4,7 @@ from pathlib import Path
 import re
 
 DEFAULT_CONFIG_PATH = Path.home() / ".aws-explorer-config.json"
-AWS_REGION_PATTERN = re.compile(r"^[a-z]{2}-[a-z]+-\d+$")
+AWS_REGION_PATTERN = re.compile(r"^[a-z]{2}(-[a-z0-9]+)+-\d+$")
 
 def load_config() -> dict:
     if DEFAULT_CONFIG_PATH.exists():

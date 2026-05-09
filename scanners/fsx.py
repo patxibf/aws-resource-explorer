@@ -15,8 +15,8 @@ class FSxScanner(BaseScanner):
         try:
             filesystems = client.describe_file_systems().get("FileSystems", [])
             for fs in filesystems:
-                storage_bytes = fs.get("StorageCapacity", 0)
-                size_gb = storage_bytes / (1024**3)
+                storage_gib = fs.get("StorageCapacity", 0)
+                size_gb = storage_gib * (1024**3) / (1000**3)
                 cost = CostEstimate(size_gb * FSX_PRICE_PER_GB_MONTH, "static")
                 resources.append(Resource(
                     name=fs["FileSystemId"],

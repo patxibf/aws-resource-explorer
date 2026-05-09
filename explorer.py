@@ -91,8 +91,12 @@ def main():
     def scan_region(region: str):
         session = boto3.Session()
         resources = []
+        seen_globals = set()
         for scanner_class in get_scanners():
             try:
+                if getattr(scanner_class, "IS_GLOBAL", False):
+                    if region != regions[0]:
+                        continue
                 scanner = scanner_class(session, region)
                 resources.extend(scanner.scan())
             except Exception as e:

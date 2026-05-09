@@ -8,15 +8,17 @@ def test_rds_scanner_stopped_instance():
             return [self.func()]
 
     class MockRDS:
+        def __init__(self):
+            self.instances = [{
+                "DBInstanceIdentifier": "prod-db",
+                "DBInstanceClass": "db.t3.medium",
+                "DBInstanceStatus": "stopped",
+                "DBInstanceArn": "arn:aws:rds:us-east-1:123456789012:db:prod-db"
+            }]
         def get_paginator(self, operation_name):
-            return MockPaginator(lambda: {
-                "DBInstances": [{
-                    "DBInstanceIdentifier": "prod-db",
-                    "DBInstanceClass": "db.t3.medium",
-                    "DBInstanceStatus": "stopped",
-                    "Tags": [{"Key": "Env", "Value": "production"}]
-                }]
-            })
+            return MockPaginator(lambda: {"DBInstances": self.instances})
+        def list_tags_for_resource(self, ResourceName):
+            return {"TagList": [{"Key": "Env", "Value": "production"}]}
 
     class MockSession:
         def client(self, service, region_name=None):
@@ -37,15 +39,17 @@ def test_rds_scanner_running_instance():
             return [self.func()]
 
     class MockRDS:
+        def __init__(self):
+            self.instances = [{
+                "DBInstanceIdentifier": "prod-db",
+                "DBInstanceClass": "db.t3.medium",
+                "DBInstanceStatus": "available",
+                "DBInstanceArn": "arn:aws:rds:us-east-1:123456789012:db:prod-db"
+            }]
         def get_paginator(self, operation_name):
-            return MockPaginator(lambda: {
-                "DBInstances": [{
-                    "DBInstanceIdentifier": "prod-db",
-                    "DBInstanceClass": "db.t3.medium",
-                    "DBInstanceStatus": "available",
-                    "Tags": [{"Key": "Env", "Value": "production"}]
-                }]
-            })
+            return MockPaginator(lambda: {"DBInstances": self.instances})
+        def list_tags_for_resource(self, ResourceName):
+            return {"TagList": [{"Key": "Env", "Value": "production"}]}
 
     class MockSession:
         def client(self, service, region_name=None):

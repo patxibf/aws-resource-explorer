@@ -1,12 +1,12 @@
 from typing import List
 import sys
+from functools import lru_cache
 import boto3
 from scanners.base import BaseScanner
 from scanners import register
 from models import Resource, CostEstimate
 
-S3_STORAGE_PRICE_PER_GB = 0.023
-
+@lru_cache(maxsize=1)
 def get_s3_storage_price(region: str = "us-east-1") -> float:
     try:
         pricing = boto3.client("pricing", region_name="us-east-1")
@@ -18,9 +18,27 @@ def get_s3_storage_price(region: str = "us-east-1") -> float:
         for price in response.get("PriceList", []):
             usd = list(list(price["terms"]["onDemand"].values())[0]["priceDimensions"].values())[0]["pricePerUnit"]["USD"]
             return float(usd)
-        return S3_STORAGE_PRICE_PER_GB
+        return 0.023
     except Exception:
-        return S3_STORAGE_PRICE_PER_GB
+        return 0.023
+
+def get_bucket_size_bytes(client, bucket: str) -> int:
+    try:
+        cw = boto3.client("cloudwatch", region_name="us-east-1")
+        result = cw.get_metric_statistics(
+            Namespace="AWS/S3",
+            MetricName="BucketSizeBytes",
+            Period=86400,
+            StartTime="2026-05-01T00:00:00Z",
+            EndTime="2026-05-09T00:00:00Z",
+            Statistics=["Average"],
+            Dimensions=[{"Name": "BucketName", "Value": bucket}, {"Name": "StorageType", "Value": "StandardStorage"}]
+        )
+        if result.get("Datapoints"):
+            return int(result["Datapoints"][0]["Average"])
+    except Exception:
+        pass
+    return 0
 
 @register
 class S3Scanner(BaseScanner):
@@ -42,15 +60,7 @@ class S3Scanner(BaseScanner):
                 except Exception as e:
                     print(f"[s3] no tagset or error for bucket {name}: {type(e).__name__}", file=sys.stderr)
 
-                size_bytes = 0
-                try:
-                    paginator = client.get_paginator("list_objects_v2")
-                    for page in paginator.paginate(Bucket=name, PaginationConfig={"MaxKeys": 1000}):
-                        for obj in page.get("Contents", []):
-                            size_bytes += obj.get("Size", 0)
-                except Exception:
-                    pass
-
+                size_bytes = get_bucket_size_bytes(client, name)
                 size_gb = size_bytes / (1024**3)
                 cost = CostEstimate(size_gb * price_per_gb, "static")
                 resources.append(Resource(name=name, resource_type="s3.bucket", region=self.region, status="active", cost=cost, tags=tags))
