@@ -5,6 +5,7 @@ from models import Resource, CostEstimate
 
 @register
 class IAMScanner(BaseScanner):
+    IS_GLOBAL = True
     SERVICE_NAME = "iam"
 
     def scan(self) -> List[Resource]:

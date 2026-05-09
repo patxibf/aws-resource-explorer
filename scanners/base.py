@@ -3,6 +3,8 @@ from typing import List
 from models import Resource
 
 class BaseScanner(ABC):
+    IS_GLOBAL = False
+
     def __init__(self, session, region: str):
         self.session = session
         self.region = region

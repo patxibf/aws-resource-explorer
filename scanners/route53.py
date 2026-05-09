@@ -5,6 +5,7 @@ from models import Resource, CostEstimate
 
 @register
 class Route53Scanner(BaseScanner):
+    IS_GLOBAL = True
     SERVICE_NAME = "route53"
 
     def scan(self) -> List[Resource]:

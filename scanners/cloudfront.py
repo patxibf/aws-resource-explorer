@@ -5,6 +5,7 @@ from models import Resource, CostEstimate
 
 @register
 class CloudFrontScanner(BaseScanner):
+    IS_GLOBAL = True
     SERVICE_NAME = "cloudfront"
 
     def scan(self) -> List[Resource]:

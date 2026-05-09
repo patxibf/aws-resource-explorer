@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
+import argparse
 import boto3
 import sys
 import os
 from datetime import datetime
-from config import ensure_config, get_regions, load_config
+from config import ensure_config, get_regions, interactive_setup
 from models import Resource
 from scanners import get_scanners
 
@@ -60,6 +61,19 @@ def print_summary(all_resources: list):
         print(f"{r.name:<40} {r.resource_type:<20} {r.region:<15} {r.status:<12} {cost_str}")
 
 def main():
+    parser = argparse.ArgumentParser(description="AWS Resource Explorer")
+    parser.add_argument("--configure", action="store_true", help="Run interactive setup")
+    args = parser.parse_args()
+
+    if args.configure:
+        print("Running configuration setup...")
+        regions = interactive_setup()
+        config = {"regions": regions}
+        from config import save_config
+        save_config(config)
+        print(f"Config saved. Run without --configure to start scanning.")
+        sys.exit(0)
+
     config = ensure_config()
     regions = get_regions(config)
 
@@ -70,22 +84,24 @@ def main():
     print_header()
     print(f"\nScanning regions: {', '.join(regions)}")
 
-    session = boto3.Session()
     all_resources = []
 
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     def scan_region(region: str):
+        session = boto3.Session()
         resources = []
         for scanner_class in get_scanners():
             try:
+                if getattr(scanner_class, "IS_GLOBAL", False) and region != regions[0]:
+                    continue
                 scanner = scanner_class(session, region)
                 resources.extend(scanner.scan())
             except Exception as e:
                 print(f"Warning: {scanner_class.__name__} in {region}: {e}")
         return region, resources
 
-    with ThreadPoolExecutor(max_workers=len(regions)) as executor:
+    with ThreadPoolExecutor(max_workers=max(len(regions), 1)) as executor:
         futures = {executor.submit(scan_region, r): r for r in regions}
         for future in as_completed(futures):
             region, resources = future.result()
