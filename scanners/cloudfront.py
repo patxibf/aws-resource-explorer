@@ -7,7 +7,13 @@ from models import Resource, CostEstimate
 class CloudFrontScanner(BaseScanner):
     SERVICE_NAME = "cloudfront"
 
+    def __init__(self, session, region: str, regions: List[str]):
+        super().__init__(session, region)
+        self.regions = regions
+
     def scan(self) -> List[Resource]:
+        if self.region != self.regions[0]:
+            return []
         client = self.session.client(self.SERVICE_NAME)
         resources = []
         try:

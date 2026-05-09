@@ -1,5 +1,7 @@
 from models import CostEstimate
 
+HOURS_PER_MONTH = 730
+
 STATIC_COSTS = {
     "ec2.instance": {
         "type": "per_hour",
@@ -40,13 +42,13 @@ def estimate_ec2_cost(instance_type: str, state: str) -> CostEstimate:
     if state in ("stopped", "terminated"):
         return CostEstimate(0.0, "static")
     price = STATIC_COSTS["ec2.instance"]["sizes"].get(instance_type, 0.064)
-    return CostEstimate(price * 730, "static")  # ~730 hours/month
+    return CostEstimate(price * HOURS_PER_MONTH, "static")  # ~730 hours/month
 
 def estimate_rds_cost(instance_class: str, state: str) -> CostEstimate:
     if state in ("stopped", "deleted"):
         return CostEstimate(0.0, "static")
     price = STATIC_COSTS["rds.instance"].get(f"db.{instance_class}", 0.068)
-    return CostEstimate(price * 730, "static")
+    return CostEstimate(price * HOURS_PER_MONTH, "static")
 
 def estimate_lambda_cost(invocations: int, gb_seconds: float) -> CostEstimate:
     monthly_requests_cost = (invocations / 1_000_000) * STATIC_COSTS["lambda"]["price_per_1m_requests"]
@@ -55,10 +57,10 @@ def estimate_lambda_cost(invocations: int, gb_seconds: float) -> CostEstimate:
 
 def estimate_nat_cost(state: str) -> CostEstimate:
     if state == "available":
-        return CostEstimate(STATIC_COSTS["natgateway"]["price"] * 730, "static")
+        return CostEstimate(STATIC_COSTS["natgateway"]["price"] * HOURS_PER_MONTH, "static")
     return CostEstimate(0.0, "static")
 
 def estimate_elb_cost(lb_type: str, state: str) -> CostEstimate:
     if state != "active":
         return CostEstimate(0.0, "static")
-    return CostEstimate(STATIC_COSTS["elb"]["application"] * 730, "static")
+    return CostEstimate(STATIC_COSTS["elb"]["application"] * HOURS_PER_MONTH, "static")

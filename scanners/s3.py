@@ -1,8 +1,9 @@
 from typing import List
+import sys
+import boto3
 from scanners.base import BaseScanner
 from scanners import register
 from models import Resource, CostEstimate
-import boto3
 
 S3_STORAGE_PRICE_PER_GB = 0.023
 
@@ -31,13 +32,29 @@ class S3Scanner(BaseScanner):
 
         try:
             response = client.list_buckets()
+            price_per_gb = get_s3_storage_price(self.region)
             for bucket in response.get("Buckets", []):
                 name = bucket["Name"]
-                tags_response = client.get_bucket_tagging(Bucket=name)
-                tags = {t["Key"]: t["Value"] for t in tags_response.get("TagSet", [])}
-                cost = CostEstimate(0.50, "static")
+                tags = {}
+                try:
+                    tags_response = client.get_bucket_tagging(Bucket=name)
+                    tags = {t["Key"]: t["Value"] for t in tags_response.get("TagSet", [])}
+                except Exception as e:
+                    print(f"[s3] no tagset or error for bucket {name}: {type(e).__name__}", file=sys.stderr)
+
+                size_bytes = 0
+                try:
+                    paginator = client.get_paginator("list_objects_v2")
+                    for page in paginator.paginate(Bucket=name, PaginationConfig={"MaxKeys": 1000}):
+                        for obj in page.get("Contents", []):
+                            size_bytes += obj.get("Size", 0)
+                except Exception:
+                    pass
+
+                size_gb = size_bytes / (1024**3)
+                cost = CostEstimate(size_gb * price_per_gb, "static")
                 resources.append(Resource(name=name, resource_type="s3.bucket", region=self.region, status="active", cost=cost, tags=tags))
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[s3] scan failed: {type(e).__name__}", file=sys.stderr)
 
         return resources

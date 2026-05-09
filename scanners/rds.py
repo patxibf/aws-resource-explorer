@@ -24,5 +24,7 @@ class RDSScanner(BaseScanner):
         status = db["DBInstanceStatus"]
         instance_class = db["DBInstanceClass"]
         cost = estimate_rds_cost(instance_class, status)
-        tags = {t["Key"]: t["Value"] for t in db.get("Tags", [])}
+        arn = db["DBInstanceArn"]
+        tags_response = client.list_tags_for_resource(ResourceName=arn)
+        tags = {t["Key"]: t["Value"] for t in tags_response.get("TagList", [])}
         return Resource(name=name, resource_type="rds.instance", region=self.region, status=status, cost=cost, tags=tags)
